@@ -59,7 +59,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer;transition:.15s
           <div id="teacherSignedInAs" class="statusMsg good" style="margin-bottom:10px">Teacher access verified.</div>
           <div class="field"><label>Game title</label><input id="createTitle" value="Accounting Tycoon — Journal Entries" /></div>
           <div class="row2"><div class="field"><label>Turns per team</label><select id="createTurns"><option>8</option><option selected>12</option><option>15</option><option>20</option></select></div><div class="field"><label>Mode</label><select disabled><option>Classroom Competition</option></select></div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" onclick="createClassroom()">Create Classroom Game</button><button class="secondary" onclick="teacherSignOut()">Teacher Sign Out</button><button id="adminPanelBtn" class="ghost hidden" onclick="openAdmin()">Admin Panel</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" onclick="createClassroom()">Create Classroom Game</button><button class="secondary" onclick="teacherSignOut()">Teacher Sign Out</button><button id="adminPanelBtn" class="secondary hidden" onclick="openAdmin()">Admin Panel</button></div>
           <div class="field"><label>Reopen your teacher dashboard with room code</label><div style="display:flex;gap:7px"><input id="teacherCode" placeholder="e.g. 482731" maxlength="6" /><button class="secondary" onclick="openTeacherByCode()">Open</button></div></div>
         </div>
       </div>
