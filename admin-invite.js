@@ -234,15 +234,12 @@ This file:
   }
 
   async function initialiseUpgrade() {
-    setInviteUI();
+  setInviteUI();
 
-    if (inviteDetected()) {
-      injectInviteModal();
-    }
-
-    const observer = new MutationObserver(() => setInviteUI());
-    observer.observe(document.body, { childList: true, subtree: true });
+  if (inviteDetected()) {
+    injectInviteModal();
   }
+}
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialiseUpgrade);
