@@ -31,7 +31,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer;transition:.15s
 <div class="app">
   <header class="topbar">
     <div class="brandWrap"><div class="logoMark">📊</div><div><div class="brand">Accounting <b>Tycoon</b></div><div class="tagline">MULTIPLAYER BUSINESS SIMULATION + LEARNING ANALYTICS</div></div></div>
-    <div class="topActions"><span id="backendPill" class="pill demo">Local Demo</span><span id="sessionPill" class="pill">Not in a game</span><button id="homeBtn" class="ghost hidden" onclick="goHome()">Home</button></div>
+    <div class="topActions"><span id="sessionPill" class="pill">Not in a game</span><button id="homeBtn" class="ghost hidden" onclick="goHome()">Home</button></div>
   </header>
 
   <section id="landingView" class="landing">
@@ -192,7 +192,6 @@ async function initBackend(){
       actorId=session.user.id;
       backendMode='supabase';
       await refreshTeacherAuth();
-      document.getElementById('backendPill').textContent='Supabase Live';document.getElementById('backendPill').className='pill live';
       document.getElementById('landingStatus').innerHTML='✅ <b>Realtime classroom mode is configured.</b> Students can join from different devices. Only authorised teacher accounts can create rooms.';document.getElementById('landingStatus').className='statusMsg good';
     }catch(e){console.error(e);backendMode='local';actorId=sessionStorage.getItem('at_actor')||uuid();sessionStorage.setItem('at_actor',actorId);teacherAuthorized=true;updateTeacherAccessUI();showLandingError('Supabase configuration could not connect. Falling back to Local Demo mode. '+e.message)}
   }else{actorId=sessionStorage.getItem('at_actor')||uuid();sessionStorage.setItem('at_actor',actorId);teacherAuthorized=true;updateTeacherAccessUI()}
