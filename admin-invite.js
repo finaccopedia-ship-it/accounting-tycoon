@@ -90,8 +90,14 @@ This file:
         throw new Error(await getFunctionErrorMessage(error));
       }
       if (!data?.ok) {
-        throw new Error(data?.error || 'Teacher invitation failed.');
-      }
+  console.error('invite-teacher response:', data);
+  throw new Error(
+    data?.error ||
+    data?.message ||
+    JSON.stringify(data) ||
+    'Teacher invitation failed.'
+  );
+}
 
       if (statusEl) {
         statusEl.textContent =
