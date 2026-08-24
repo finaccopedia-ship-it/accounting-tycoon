@@ -59,7 +59,7 @@ button,input,select,textarea{font:inherit} button{cursor:pointer;transition:.15s
           <div id="teacherSignedInAs" class="statusMsg good" style="margin-bottom:10px">Teacher access verified.</div>
           <div class="field"><label>Game title</label><input id="createTitle" value="Accounting Tycoon — Journal Entries" /></div>
           <div class="row2"><div class="field"><label>Turns per team</label><select id="createTurns"><option>8</option><option selected>12</option><option>15</option><option>20</option></select></div><div class="field"><label>Mode</label><select disabled><option>Classroom Competition</option></select></div></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" onclick="createClassroom()">Create Classroom Game</button><button class="secondary" onclick="teacherSignOut()">Teacher Sign Out</button></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" onclick="createClassroom()">Create Classroom Game</button><button class="secondary" onclick="teacherSignOut()">Teacher Sign Out</button><button id="adminPanelBtn" class="ghost hidden" onclick="openAdmin()">Admin Panel</button></div>
           <div class="field"><label>Reopen your teacher dashboard with room code</label><div style="display:flex;gap:7px"><input id="teacherCode" placeholder="e.g. 482731" maxlength="6" /><button class="secondary" onclick="openTeacherByCode()">Open</button></div></div>
         </div>
       </div>
@@ -71,6 +71,33 @@ button,input,select,textarea{font:inherit} button{cursor:pointer;transition:.15s
         <button class="goldBtn" onclick="joinClassroom()">Join Team Game</button>
       </div>
       <div id="landingStatus" class="statusMsg">Configure Supabase for real multi-device play. Until then, Local Demo mode lets you test teacher + teams in separate tabs on the same browser.</div>
+    </div>
+  </section>
+
+  <section id="adminView" class="landing hidden">
+    <div class="card entryPanel" style="grid-template-columns:1fr">
+      <div class="roleCard">
+        <h2>🛠️ Admin Panel</h2>
+        <p id="adminWho" class="subtle"></p>
+        <div id="ownerOnlyBox" class="hidden">
+          <h3 style="margin-top:18px">Create Institution</h3>
+          <div class="field"><label>Institution name</label><input id="newInstName" placeholder="e.g. ABC University" /></div>
+          <div class="field"><label>Contact email</label><input id="newInstEmail" placeholder="admin@abc.edu" /></div>
+          <button class="primary" onclick="createInstitution()">Create Institution</button>
+          <div id="instStatus" class="statusMsg" style="margin-top:8px"></div>
+          <h3 style="margin-top:22px">Institutions</h3>
+          <div id="institutionsList" class="subtle">Loading…</div>
+        </div>
+        <h3 style="margin-top:22px">Add / Update Teacher</h3>
+        <p class="subtle">The teacher must already have a login account (create it first in Supabase → Authentication → Add user), then attach them to an institution here.</p>
+        <div class="field"><label>Teacher email</label><input id="teacherAddEmail" placeholder="teacher@school.edu" /></div>
+        <div class="field"><label>Institution</label><select id="teacherAddInst"></select></div>
+        <div class="field"><label>Role</label><select id="teacherAddRole"><option value="teacher">Teacher</option><option value="institution_admin">Institution Admin</option></select></div>
+        <button class="primary" onclick="addTeacher()">Add / Update Teacher</button>
+        <div id="teacherAddStatus" class="statusMsg" style="margin-top:8px"></div>
+        <h3 style="margin-top:22px">Teachers</h3>
+        <div id="teachersList" class="subtle">Loading…</div>
+      </div>
     </div>
   </section>
 
@@ -154,6 +181,8 @@ function updateTeacherAccessUI(){
   login.classList.toggle('hidden',teacherAuthorized);
   create.classList.toggle('hidden',!teacherAuthorized);
   if(teacherAuthorized&&who)who.innerHTML='✅ <b>Teacher access verified.</b> '+esc(teacherProfile?.display_name||'Authorised teacher');
+  const adminBtn=document.getElementById('adminPanelBtn');
+  if(adminBtn)adminBtn.classList.toggle('hidden', !(teacherAuthorized && teacherProfile && (teacherProfile.role==='platform_owner'||teacherProfile.role==='institution_admin')));
 }
 async function initBackend(){
   if(configured){
@@ -314,7 +343,7 @@ const errorLabels={unbalanced_entry:'Unbalanced debit/credit',incomplete_entry:'
 
 // -------------------- APP STATE --------------------
 let currentGame=null,currentTeam=null,state=null,teacherUnsub=null,teamUnsub=null,teacherTeams=[],teacherAttempts=[];
-function showOnly(id){['landingView','teacherView','waitingView','gameView'].forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));document.getElementById('homeBtn').classList.toggle('hidden',id==='landingView')}
+function showOnly(id){['landingView','teacherView','adminView','waitingView','gameView'].forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));document.getElementById('homeBtn').classList.toggle('hidden',id==='landingView')}
 function goHome(){teacherUnsub?.();teamUnsub?.();currentGame=currentTeam=state=null;document.getElementById('sessionPill').textContent='Not in a game';showOnly('landingView')}
 function randomCode(){return String(Math.floor(100000+Math.random()*900000))}
 async function uniqueCode(){for(let i=0;i<8;i++){const c=randomCode();if(!await backend.getGameByCode(c))return c}throw new Error('Could not generate a unique room code. Try again.')}
@@ -393,6 +422,55 @@ function leaveTeam(){teamUnsub?.();currentTeam=currentGame=state=null;goHome()}
 // -------------------- UTILS --------------------
 function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
 function pretty(s){return String(s||'').replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase())}
+
+async function openAdmin(){
+  showOnly('adminView');
+  document.getElementById('sessionPill').textContent='Admin';
+  document.getElementById('adminWho').textContent='Signed in as '+(teacherProfile?.email||'')+' • role: '+(teacherProfile?.role||'');
+  const isOwner=teacherProfile?.role==='platform_owner';
+  document.getElementById('ownerOnlyBox').classList.toggle('hidden', !isOwner);
+  await loadInstitutions();
+  await loadTeachers();
+}
+async function loadInstitutions(){
+  const {data,error}=await sb.from('institutions').select('id,institution_name,status').order('institution_name');
+  const sel=document.getElementById('teacherAddInst');
+  if(sel)sel.innerHTML=(data||[]).map(i=>`<option value="${i.id}">${esc(i.institution_name)}</option>`).join('');
+  const list=document.getElementById('institutionsList');
+  if(!list)return;
+  if(error){list.textContent='Error: '+error.message;return}
+  list.innerHTML=(data||[]).map(i=>`<div>• <b>${esc(i.institution_name)}</b> — ${esc(i.status)}</div>`).join('')||'<div>No institutions yet.</div>';
+}
+async function createInstitution(){
+  const name=document.getElementById('newInstName').value.trim();
+  const email=document.getElementById('newInstEmail').value.trim();
+  const statusEl=document.getElementById('instStatus');
+  if(!name){statusEl.textContent='Enter an institution name.';statusEl.className='statusMsg bad';return}
+  const {error}=await sb.from('institutions').insert({institution_name:name,contact_email:email,status:'Trial'});
+  if(error){statusEl.textContent='Error: '+error.message;statusEl.className='statusMsg bad';return}
+  statusEl.textContent='Institution created.';statusEl.className='statusMsg good';
+  document.getElementById('newInstName').value='';document.getElementById('newInstEmail').value='';
+  await loadInstitutions();
+}
+async function loadTeachers(){
+  const {data,error}=await sb.from('teachers').select('email,display_name,role,institution_id').order('email');
+  const list=document.getElementById('teachersList');
+  if(!list)return;
+  if(error){list.textContent='Error: '+error.message;return}
+  list.innerHTML=(data||[]).map(t=>`<div>• ${esc(t.email||t.display_name||'(no email)')} — ${esc(t.role)}</div>`).join('')||'<div>No teachers yet.</div>';
+}
+async function addTeacher(){
+  const email=document.getElementById('teacherAddEmail').value.trim();
+  const instId=document.getElementById('teacherAddInst').value;
+  const role=document.getElementById('teacherAddRole').value;
+  const statusEl=document.getElementById('teacherAddStatus');
+  if(!email||!instId){statusEl.textContent='Enter an email and choose an institution.';statusEl.className='statusMsg bad';return}
+  const {error}=await sb.rpc('add_teacher_by_email',{p_email:email,p_institution_id:instId,p_role:role});
+  if(error){statusEl.textContent='Error: '+error.message;statusEl.className='statusMsg bad';return}
+  statusEl.textContent='Teacher added/updated.';statusEl.className='statusMsg good';
+  document.getElementById('teacherAddEmail').value='';
+  await loadTeachers();
+}
 
 initBackend();
 </script>
