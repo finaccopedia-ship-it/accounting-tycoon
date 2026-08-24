@@ -138,7 +138,7 @@ async function refreshTeacherAuth(){
   teacherAuthorized=false;teacherProfile=null;
   if(backendMode==='local'){teacherAuthorized=true;updateTeacherAccessUI();return}
   if(!sb||!actorId){updateTeacherAccessUI();return}
-  const {data,error}=await sb.from('teachers').select('user_id,display_name').eq('user_id',actorId).maybeSingle();
+  const {data,error}=await sb.from('teachers').select('user_id,display_name,institution_id,role').eq('user_id',actorId).maybeSingle();
   if(error){console.warn('Teacher lookup:',error.message);updateTeacherAccessUI();return}
   if(data){teacherAuthorized=true;teacherProfile=data}
   updateTeacherAccessUI();
@@ -320,7 +320,7 @@ function randomCode(){return String(Math.floor(100000+Math.random()*900000))}
 async function uniqueCode(){for(let i=0;i<8;i++){const c=randomCode();if(!await backend.getGameByCode(c))return c}throw new Error('Could not generate a unique room code. Try again.')}
 
 async function createClassroom(){
-  try{if(backendMode==='supabase'&&!teacherAuthorized)throw new Error('Teacher sign-in is required to create a classroom game.');const title=document.getElementById('createTitle').value.trim()||'Accounting Tycoon';const max_turns=+document.getElementById('createTurns').value;const code=await uniqueCode();currentGame=await backend.createGame({code,title,status:'lobby',max_turns,host_user_id:actorId});localStorage.setItem('at_last_teacher_code',code);openTeacher(currentGame)}catch(e){showLandingError(e.message)}
+    try{if(backendMode==='supabase'&&!teacherAuthorized)throw new Error('Teacher sign-in is required to create a classroom game.');const title=document.getElementById('createTitle').value.trim()||'Accounting Tycoon';const max_turns=+document.getElementById('createTurns').value;const code=await uniqueCode();currentGame=await backend.createGame({code,title,status:'lobby',max_turns,host_user_id:actorId,institution_id:teacherProfile?.institution_id||null});localStorage.setItem('at_last_teacher_code',code);openTeacher(currentGame)}catch(e){showLandingError(e.message)}
 }
 async function openTeacherByCode(){
   try{if(backendMode==='supabase'&&!teacherAuthorized)throw new Error('Teacher sign-in is required to open the teacher dashboard.');const code=document.getElementById('teacherCode').value.replace(/\D/g,'').slice(0,6);if(!code)throw new Error('Enter the room code.');const g=await backend.getGameByCode(code);if(!g)throw new Error('Game not found.');if(g.host_user_id!==actorId)throw new Error('This browser session is not the teacher who created that room.');openTeacher(g)}catch(e){showLandingError(e.message)}
